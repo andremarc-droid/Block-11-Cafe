@@ -1,0 +1,67 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // 1. Raw Materials Collection
+    // Used for listing, creating, editing, and restocking inventory items
+    match /rawMaterials/{materialId} {
+      // Authenticated users (staff/admin) can view materials
+      allow read: if isAuthenticated();
+
+      // Creating a new raw material
+      allow create: if isAuthenticated()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.stockQty is number
+        && request.resource.data.stockQty >= 0
+        && request.resource.data.costPerUnit is number
+        && request.resource.data.costPerUnit >= 0
+        && request.resource.data.minStockAlert is number
+        && request.resource.data.minStockAlert >= 0
+        && request.resource.data.createdBy == request.auth.uid;
+
+      // Updating a raw material (via Edit modal or Restock transaction)
+      allow update: if isAuthenticated()
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['stockQty']) || (request.resource.data.stockQty is number && request.resource.data.stockQty >= 0))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['costPerUnit']) || (request.resource.data.costPerUnit is number && request.resource.data.costPerUnit >= 0));
+
+      // Deleting a raw material
+      allow delete: if isAuthenticated();
+    }
+
+    // 2. Stock Movements Collection
+    // Audit log written during restocking (restockMaterial)
+    match /stockMovements/{movementId} {
+      // Authenticated users can view movement logs
+      allow read: if isAuthenticated();
+
+      // Only authenticated users can record stock movements matching their user ID
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.rawMaterialId is string
+        && request.resource.data.changeQty is number
+        && request.resource.data.changeQty > 0
+        && request.resource.data.costPerUnitAtTime is number
+        && request.resource.data.costPerUnitAtTime >= 0
+        && request.resource.data.movementType is string;
+
+      // Stock movements are immutable audit records: no edits or deletions allowed
+      allow update, delete: if false;
+    }
+
+    // Default deny all other paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

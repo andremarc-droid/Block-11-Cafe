@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  /* Roasted-coffee ink, warm paper, and an herbal-olive accent — deliberately
+     not the cream+terracotta pairing that shows up on every generated page. */
+  --color-ink: #2b211b;
+  --color-ink-soft: #5c5148;
+  --color-paper: #f3efe6;
+  --color-surface: #ffffff;
+  --color-line: #ded4c2;
+  --color-accent: #5f6f42;
+  --color-accent-soft: #eef0e5;
+  --color-alert: #a83a2c;
+  --color-alert-soft: #f7e6e2;
+
+  --font-display: "Fraunces", "Georgia", serif;
+  --font-sans: "Inter", -apple-system, "Segoe UI", sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Aligns digits in the stock/cost/valuation columns so the table reads
+   cleanly, without reaching for a full monospace face. */
+.tabular-figures {
+  font-variant-numeric: tabular-nums;
+}
