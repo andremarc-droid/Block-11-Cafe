@@ -54,9 +54,9 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
     setError("");
 
     const name = form.name.trim();
-    const stockQty = Number(form.stockQty);
-    const costPerUnit = Number(form.costPerUnit);
-    const minStockAlert = Number(form.minStockAlert);
+    const stockQty = Number(form.stockQty.replace(/,/g, ""));
+    const costPerUnit = Number(form.costPerUnit.replace(/,/g, ""));
+    const minStockAlert = Number(form.minStockAlert.replace(/,/g, ""));
 
     if (!name) { setError("Enter a material name."); return; }
     if (!Number.isFinite(stockQty) || stockQty < 0) { setError("Stock quantity must be 0 or more."); return; }
