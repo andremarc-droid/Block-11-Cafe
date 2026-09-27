@@ -7,9 +7,9 @@ const EMPTY_FORM = {
   category: MATERIAL_CATEGORIES[0],
   materialType: "General",
   unit: "g",
-  stockQty: "0",
-  costPerUnit: "0.0000",
-  minStockAlert: "0",
+  stockQty: "",
+  costPerUnit: "",
+  minStockAlert: "",
 };
 
 export function EditMaterialModal({ open, mode, material, userId, onClose, onDone }) {
@@ -157,9 +157,10 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
                 <input
                   id="stockQty"
                   inputMode="decimal"
+                  placeholder="e.g. 1,000"
                   value={form.stockQty}
                   onChange={(e) => updateField("stockQty", e.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                  className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none placeholder:text-ink-soft/50 focus:border-accent focus:ring-2 focus:ring-accent/25"
                 />
               </div>
               <div>
@@ -167,9 +168,10 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
                 <input
                   id="costPerUnit"
                   inputMode="decimal"
+                  placeholder="e.g. 85.00"
                   value={form.costPerUnit}
                   onChange={(e) => updateField("costPerUnit", e.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                  className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none placeholder:text-ink-soft/50 focus:border-accent focus:ring-2 focus:ring-accent/25"
                 />
               </div>
             </div>
@@ -179,9 +181,10 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
               <input
                 id="minStockAlert"
                 inputMode="decimal"
+                placeholder="e.g. 10"
                 value={form.minStockAlert}
                 onChange={(e) => updateField("minStockAlert", e.target.value)}
-                className="mt-1.5 w-full max-w-[10rem] rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                className="mt-1.5 w-full max-w-[10rem] rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none placeholder:text-ink-soft/50 focus:border-accent focus:ring-2 focus:ring-accent/25"
               />
             </div>
 
