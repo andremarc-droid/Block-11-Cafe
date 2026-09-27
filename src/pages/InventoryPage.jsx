@@ -75,11 +75,12 @@ export default function InventoryPage() {
           />
           <div className="flex items-center gap-4">
             <span className="text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>
-              {user?.email}
+              Admin
             </span>
             <button
               onClick={logout}
-              className="rounded-lg border px-3 py-1.5 text-sm font-medium transition"
+              title="Sign out"
+              className="flex items-center justify-center rounded-lg border p-2 transition"
               style={{
                 borderColor: "rgba(255,255,255,0.25)",
                 color: "rgba(255,255,255,0.85)",
@@ -87,7 +88,12 @@ export default function InventoryPage() {
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)")}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             >
-              Sign out
+              {/* Power/logout icon */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
             </button>
           </div>
         </div>
