@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   orderBy,
@@ -14,18 +15,11 @@ import { db } from "../../firebaseConfig";
 const MATERIALS_COLLECTION = "rawMaterials";
 const MOVEMENTS_COLLECTION = "stockMovements";
 
-/**
- * Live-subscribes to the rawMaterials collection. onChange fires with the
- * full, current array every time anything changes — this is the source of
- * truth the Total Inventory Valuation is derived from, so that figure is
- * always computed off live data rather than a stored/frozen number.
- */
 export function subscribeToMaterials(onChange, onError) {
   const materialsQuery = query(
     collection(db, MATERIALS_COLLECTION),
     orderBy("name")
   );
-
   return onSnapshot(
     materialsQuery,
     (snapshot) => {
@@ -39,11 +33,6 @@ export function subscribeToMaterials(onChange, onError) {
   );
 }
 
-/**
- * Creates a brand-new raw material. Not one of the three replicated flows —
- * added only so the list has a way to get its first rows. Starting stock and
- * cost become the WAC baseline going forward.
- */
 export async function createMaterial(fields, userId) {
   await addDoc(collection(db, MATERIALS_COLLECTION), {
     name: fields.name,
@@ -58,11 +47,6 @@ export async function createMaterial(fields, userId) {
   });
 }
 
-/**
- * EDIT flow — a plain overwrite of any field, including stockQty and
- * costPerUnit. No blending logic: this is for correcting mistakes, not for
- * restocking. Use restockMaterial() for adding stock.
- */
 export async function saveMaterialEdit(materialId, fields) {
   const materialRef = doc(db, MATERIALS_COLLECTION, materialId);
   await updateDoc(materialRef, {
@@ -77,19 +61,19 @@ export async function saveMaterialEdit(materialId, fields) {
 }
 
 /**
+ * DELETE flow — permanently removes the material document from Firestore.
+ * Stock movements referencing this material are left intact for audit history.
+ */
+export async function deleteMaterial(materialId) {
+  const materialRef = doc(db, MATERIALS_COLLECTION, materialId);
+  await deleteDoc(materialRef);
+}
+
+/**
  * QUICK RESTOCK flow — read-modify-write done atomically via a Firestore
- * transaction, mirroring the SQL `SELECT ... FOR UPDATE` + transaction
- * pattern from the WPF app's RawMaterialRepository.RestockWithWacAsync:
- * the material doc is read, the Weighted Average Cost is computed from
- * that read, and both the new stockQty/costPerUnit and the stockMovements
- * log entry are written back in the same transaction. Firestore retries
- * the whole transaction automatically if another restock lands first, so
- * two concurrent restocks on the same material can't clobber each other.
- *
- * addQty must already be validated as > 0. restockCost is the cost for
- * THIS restock event specifically (defaulting to the material's current
- * cost happens one layer up, in the UI, per the "blank cost = no price
- * change" rule).
+ * transaction. The material doc is read, WAC is computed, and both the
+ * updated stockQty/costPerUnit and the stockMovements log entry are written
+ * back in the same transaction.
  */
 export async function restockMaterial({ materialId, addQty, restockCost, userId }) {
   const materialRef = doc(db, MATERIALS_COLLECTION, materialId);
@@ -106,8 +90,6 @@ export async function restockMaterial({ materialId, addQty, restockCost, userId 
     const existingCost = Number(data.costPerUnit) || 0;
     const newQty = existingQty + addQty;
 
-    // Edge case: nothing to blend against when existing stock is 0 — the
-    // new cost is simply the restock cost.
     const newCost =
       existingQty <= 0
         ? restockCost
