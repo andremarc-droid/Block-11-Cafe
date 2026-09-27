@@ -6,6 +6,7 @@ import { AiInsightWidget } from "../components/inventory/AiInsightWidget";
 import { useAuth } from "../contexts/AuthContext";
 import { MATERIAL_CATEGORIES, formatCurrency } from "../lib/constants";
 import { subscribeToMaterials } from "../lib/firestore/rawMaterials";
+import logo from "../assets/B11 WHITE.png";
 
 export default function InventoryPage() {
   const { user, logout } = useAuth();
@@ -35,7 +36,6 @@ export default function InventoryPage() {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  // Derived, never stored — always reflects whatever is currently in Firestore.
   const totalValuation = useMemo(
     () => materials.reduce((sum, m) => sum + (Number(m.stockQty) || 0) * (Number(m.costPerUnit) || 0), 0),
     [materials]
@@ -65,17 +65,27 @@ export default function InventoryPage() {
 
   return (
     <div className="min-h-screen bg-paper pb-16">
-      <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <div>
-            <p className="font-display text-2xl text-ink">Block 11 Cafe</p>
-            <p className="text-sm text-ink-soft">Raw materials &amp; inventory</p>
-          </div>
+      {/* ── Header — brown background so the white logo is visible ── */}
+      <header style={{ backgroundColor: "#2b211b" }}>
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <img
+            src={logo}
+            alt="Block 11 Cafe"
+            className="h-24 w-auto object-contain"
+          />
           <div className="flex items-center gap-4">
-            <span className="text-sm text-ink-soft">{user?.email}</span>
+            <span className="text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>
+              {user?.email}
+            </span>
             <button
               onClick={logout}
-              className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft transition hover:bg-paper"
+              className="rounded-lg border px-3 py-1.5 text-sm font-medium transition"
+              style={{
+                borderColor: "rgba(255,255,255,0.25)",
+                color: "rgba(255,255,255,0.85)",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             >
               Sign out
             </button>
@@ -139,7 +149,7 @@ export default function InventoryPage() {
           <p className="mt-4 rounded-lg bg-alert-soft px-3 py-2 text-sm text-alert">{loadError}</p>
         )}
 
-        {/* Mobile View: Responsive Cards (visible on smaller screens) */}
+        {/* Mobile cards */}
         <div className="mt-4 space-y-3 md:hidden">
           {filtered.map((material) => {
             const stockQty = Number(material.stockQty) || 0;
@@ -211,7 +221,7 @@ export default function InventoryPage() {
           )}
         </div>
 
-        {/* Desktop / Tablet View: Table with horizontal scroll support */}
+        {/* Desktop table */}
         <section className="mt-4 hidden overflow-hidden rounded-2xl border border-line bg-surface md:block">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[650px] text-left text-sm">

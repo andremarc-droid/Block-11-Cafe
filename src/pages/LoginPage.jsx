@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import logo from "../assets/B11 WHITE.png";
 
 export default function LoginPage() {
   const { user, login } = useAuth();
@@ -29,9 +30,20 @@ export default function LoginPage() {
   return (
     <div className="grid min-h-screen place-items-center bg-paper px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <p className="font-display text-3xl text-ink">Block 11 Cafe</p>
-          <p className="mt-1 text-sm text-ink-soft">Raw materials &amp; inventory</p>
+
+        {/* Logo block — brown pill so the white logo is always visible */}
+        <div className="mb-8 flex flex-col items-center gap-4">
+          <div
+            className="flex items-center justify-center rounded-2xl px-8 py-5"
+            style={{ backgroundColor: "#2b211b" }}
+          >
+            <img
+              src={logo}
+              alt="Block 11 Cafe"
+              className="h-40 w-auto object-contain"
+            />
+          </div>
+          <p className="text-sm text-ink-soft">Raw materials &amp; inventory</p>
         </div>
 
         <form
@@ -73,7 +85,8 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="mt-5 w-full rounded-lg bg-ink py-2.5 font-medium text-paper transition hover:bg-ink/90 disabled:opacity-60"
+            className="mt-5 w-full rounded-lg py-2.5 font-medium text-paper transition disabled:opacity-60"
+            style={{ backgroundColor: "#2b211b" }}
           >
             {submitting ? "Signing in…" : "Sign in"}
           </button>
