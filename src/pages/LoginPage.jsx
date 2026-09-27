@@ -28,10 +28,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-paper px-4">
+    /*
+      Removed: min-h-screen + place-items-center (grid centering)
+      These cause the form to be vertically locked in the visible viewport.
+      When the mobile keyboard opens and shrinks the viewport, the focused
+      input disappears behind it with no way to scroll.
+
+      Fix: use a plain scrollable column layout with generous top/bottom
+      padding instead. The browser then naturally scrolls the focused input
+      above the keyboard — which is how every mobile-friendly form works.
+    */
+    <div className="flex min-h-screen flex-col items-center bg-paper px-4 py-12">
       <div className="w-full max-w-sm">
 
-        {/* Logo block — brown pill so the white logo is always visible */}
+        {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-4">
           <div
             className="flex items-center justify-center rounded-2xl px-8 py-5"
@@ -60,7 +70,12 @@ export default function LoginPage() {
             autoComplete="username"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+            /*
+              fontSize 16px is critical on iOS — anything smaller causes
+              Safari to auto-zoom the page when an input is focused, which
+              breaks the layout. Tailwind's text-base is exactly 16px.
+            */
+            className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
           />
 
           <label className="mt-4 block text-sm font-medium text-ink-soft" htmlFor="password">
@@ -73,7 +88,7 @@ export default function LoginPage() {
             autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+            className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
           />
 
           {error && (
@@ -91,6 +106,9 @@ export default function LoginPage() {
             {submitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
+
+        {/* Bottom padding so the form is never flush against the keyboard */}
+        <div className="h-16" />
       </div>
     </div>
   );

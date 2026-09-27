@@ -12,12 +12,6 @@ const EMPTY_FORM = {
   minStockAlert: "0",
 };
 
-/**
- * Handles both creating a material and the EDIT flow. Editing is a plain
- * overwrite of every field — including stockQty and costPerUnit — with no
- * blending. This is for fixing data-entry mistakes; restocking always goes
- * through the separate Quick Restock dialog instead.
- */
 export function EditMaterialModal({ open, mode, material, userId, onClose, onDone }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState("");
@@ -64,32 +58,12 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
     const costPerUnit = Number(form.costPerUnit);
     const minStockAlert = Number(form.minStockAlert);
 
-    if (!name) {
-      setError("Enter a material name.");
-      return;
-    }
-    if (!Number.isFinite(stockQty) || stockQty < 0) {
-      setError("Stock quantity must be a number of 0 or more.");
-      return;
-    }
-    if (!Number.isFinite(costPerUnit) || costPerUnit < 0) {
-      setError("Cost per unit must be a number of 0 or more.");
-      return;
-    }
-    if (!Number.isFinite(minStockAlert) || minStockAlert < 0) {
-      setError("Min stock alert must be a number of 0 or more.");
-      return;
-    }
+    if (!name) { setError("Enter a material name."); return; }
+    if (!Number.isFinite(stockQty) || stockQty < 0) { setError("Stock quantity must be 0 or more."); return; }
+    if (!Number.isFinite(costPerUnit) || costPerUnit < 0) { setError("Cost per unit must be 0 or more."); return; }
+    if (!Number.isFinite(minStockAlert) || minStockAlert < 0) { setError("Min stock alert must be 0 or more."); return; }
 
-    const fields = {
-      name,
-      category: form.category,
-      materialType: form.materialType,
-      unit: form.unit,
-      stockQty,
-      costPerUnit,
-      minStockAlert,
-    };
+    const fields = { name, category: form.category, materialType: form.materialType, unit: form.unit, stockQty, costPerUnit, minStockAlert };
 
     setSaving(true);
     try {
@@ -108,148 +82,121 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
   }
 
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-ink/40 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl">
-        <h2 className="font-display text-xl text-ink">
-          {mode === "edit" ? "Edit raw material" : "New raw material"}
-        </h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          {mode === "edit"
-            ? "Direct corrections only — for adding stock, use Restock instead."
-            : "Starting stock and cost become the baseline going forward."}
-        </p>
+    /*
+      Overlay: fixed inset-0 so it covers the whole screen.
+      Inner wrapper: overflow-y-auto so the modal content scrolls
+      when the keyboard pushes the viewport up on mobile.
+      The modal card itself has no fixed height — it grows with content
+      and the scroll container handles overflow.
+    */
+    <div className="fixed inset-0 z-40 bg-ink/40" onClick={onClose}>
+      <div
+        className="flex min-h-full items-start justify-center overflow-y-auto px-4 py-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl">
+          <h2 className="font-display text-xl text-ink">
+            {mode === "edit" ? "Edit raw material" : "New raw material"}
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            {mode === "edit"
+              ? "Direct corrections only — for adding stock, use Restock instead."
+              : "Starting stock and cost become the baseline going forward."}
+          </p>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-ink-soft" htmlFor="name">
-              Name
-            </label>
-            <input
-              id="name"
-              value={form.name}
-              onChange={(event) => updateField("name", event.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-ink-soft" htmlFor="category">
-                Category
-              </label>
-              <select
-                id="category"
-                value={form.category}
-                onChange={(event) => updateField("category", event.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
-              >
-                {MATERIAL_CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-ink-soft" htmlFor="materialType">
-                Material type
-              </label>
-              <select
-                id="materialType"
-                value={form.materialType}
-                onChange={(event) => updateField("materialType", event.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
-              >
-                {MATERIAL_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-ink-soft" htmlFor="unit">
-                Unit
-              </label>
-              <select
-                id="unit"
-                value={form.unit}
-                onChange={(event) => updateField("unit", event.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
-              >
-                {availableUnits.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-ink-soft" htmlFor="stockQty">
-                Stock qty
-              </label>
+              <label className="block text-sm font-medium text-ink-soft" htmlFor="name">Name</label>
               <input
-                id="stockQty"
-                inputMode="decimal"
-                value={form.stockQty}
-                onChange={(event) => updateField("stockQty", event.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                id="name"
+                value={form.name}
+                onChange={(e) => updateField("name", e.target.value)}
+                className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-ink-soft" htmlFor="category">Category</label>
+                <select
+                  id="category"
+                  value={form.category}
+                  onChange={(e) => updateField("category", e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                >
+                  {MATERIAL_CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ink-soft" htmlFor="materialType">Material type</label>
+                <select
+                  id="materialType"
+                  value={form.materialType}
+                  onChange={(e) => updateField("materialType", e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                >
+                  {MATERIAL_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-ink-soft" htmlFor="unit">Unit</label>
+                <select
+                  id="unit"
+                  value={form.unit}
+                  onChange={(e) => updateField("unit", e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                >
+                  {availableUnits.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ink-soft" htmlFor="stockQty">Stock qty</label>
+                <input
+                  id="stockQty"
+                  inputMode="decimal"
+                  value={form.stockQty}
+                  onChange={(e) => updateField("stockQty", e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ink-soft" htmlFor="costPerUnit">Cost/unit</label>
+                <input
+                  id="costPerUnit"
+                  inputMode="decimal"
+                  value={form.costPerUnit}
+                  onChange={(e) => updateField("costPerUnit", e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="block text-sm font-medium text-ink-soft" htmlFor="costPerUnit">
-                Cost/unit
-              </label>
+              <label className="block text-sm font-medium text-ink-soft" htmlFor="minStockAlert">Min stock alert threshold</label>
               <input
-                id="costPerUnit"
+                id="minStockAlert"
                 inputMode="decimal"
-                value={form.costPerUnit}
-                onChange={(event) => updateField("costPerUnit", event.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                value={form.minStockAlert}
+                onChange={(e) => updateField("minStockAlert", e.target.value)}
+                className="mt-1.5 w-full max-w-[10rem] rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
               />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-ink-soft" htmlFor="minStockAlert">
-              Min stock alert threshold
-            </label>
-            <input
-              id="minStockAlert"
-              inputMode="decimal"
-              value={form.minStockAlert}
-              onChange={(event) => updateField("minStockAlert", event.target.value)}
-              className="mt-1.5 w-full max-w-[10rem] rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
-            />
-          </div>
+            {error && <p className="rounded-lg bg-alert-soft px-3 py-2 text-sm text-alert">{error}</p>}
 
-          {error && (
-            <p className="rounded-lg bg-alert-soft px-3 py-2 text-sm text-alert">{error}</p>
-          )}
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg px-4 py-2 font-medium text-ink-soft transition hover:bg-paper"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-lg bg-ink px-4 py-2 font-medium text-paper transition hover:bg-ink/90 disabled:opacity-60"
-            >
-              {saving ? "Saving…" : "Save"}
-            </button>
-          </div>
-        </form>
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 font-medium text-ink-soft transition hover:bg-paper">
+                Cancel
+              </button>
+              <button type="submit" disabled={saving} className="rounded-lg bg-ink px-4 py-2 font-medium text-paper transition hover:bg-ink/90 disabled:opacity-60">
+                {saving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
