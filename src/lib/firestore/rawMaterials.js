@@ -15,6 +15,16 @@ import { db } from "../../firebaseConfig";
 const MATERIALS_COLLECTION = "rawMaterials";
 const MOVEMENTS_COLLECTION = "stockMovements";
 
+// Two-way sync with the desktop POS (see FirebaseSyncService.cs in the POS app).
+// The POS tags every write it makes with lastModifiedBy = "pos" and its live listener
+// IGNORES any change still carrying that tag (it assumes it's just its own push echoing
+// back). Because updateDoc()/transaction.update() only touch the fields you pass, a web
+// edit that doesn't explicitly overwrite this tag leaves the old "pos" value in place
+// and the POS silently discards the edit. So EVERY web write to rawMaterials must stamp
+// lastModifiedBy = "web" (plus updatedAt) so the POS knows to apply it.
+const SYNC_TAG_FIELD = "lastModifiedBy";
+const SYNC_TAG_VALUE = "web";
+
 export function subscribeToMaterials(onChange, onError) {
   const materialsQuery = query(
     collection(db, MATERIALS_COLLECTION),
@@ -44,6 +54,8 @@ export async function createMaterial(fields, userId) {
     minStockAlert: fields.minStockAlert,
     createdBy: userId,
     createdAt: serverTimestamp(),
+    [SYNC_TAG_FIELD]: SYNC_TAG_VALUE,
+    updatedAt: serverTimestamp(),
   });
 }
 
@@ -57,6 +69,8 @@ export async function saveMaterialEdit(materialId, fields) {
     stockQty: fields.stockQty,
     costPerUnit: fields.costPerUnit,
     minStockAlert: fields.minStockAlert,
+    [SYNC_TAG_FIELD]: SYNC_TAG_VALUE,
+    updatedAt: serverTimestamp(),
   });
 }
 
@@ -98,6 +112,8 @@ export async function restockMaterial({ materialId, addQty, restockCost, userId 
     transaction.update(materialRef, {
       stockQty: newQty,
       costPerUnit: newCost,
+      [SYNC_TAG_FIELD]: SYNC_TAG_VALUE,
+      updatedAt: serverTimestamp(),
     });
 
     transaction.set(movementRef, {
