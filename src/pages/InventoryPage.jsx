@@ -163,6 +163,7 @@ export default function InventoryPage() {
                   <div>
                     <h4 className="font-medium text-ink">{material.name}</h4>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-soft">
+                      {material.sku && <span className="rounded bg-paper px-2 py-0.5 font-mono font-medium">{material.sku}</span>}
                       <span className="rounded bg-paper px-2 py-0.5">{material.category}</span>
                       <span className="rounded bg-paper px-2 py-0.5">{material.materialType}</span>
                     </div>
@@ -251,6 +252,7 @@ export default function InventoryPage() {
                     <tr key={material.id} className="border-b border-line last:border-none">
                       <td className="px-4 py-3">
                         <div className="font-medium text-ink">{material.name}</div>
+                        {material.sku && <div className="text-xs text-ink-soft font-mono">{material.sku}</div>}
                         {isLow && (
                           <span className="mt-0.5 inline-block rounded-full bg-alert-soft px-2 py-0.5 text-xs font-medium text-alert">
                             Low stock

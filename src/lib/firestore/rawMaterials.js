@@ -33,10 +33,12 @@ export function subscribeToMaterials(onChange, onError) {
   return onSnapshot(
     materialsQuery,
     (snapshot) => {
-      const materials = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      }));
+      const materials = snapshot.docs
+        .map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }))
+        .filter((m) => m.isActive !== false);
       onChange(materials);
     },
     onError
