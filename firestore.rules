@@ -59,6 +59,56 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // 3. Categories Collection
+    // Read-only for authenticated users
+    match /categories/{id} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // 4. Menu Items Collection
+    // Menu items can be read, created, or updated by authenticated users (no deletes allowed)
+    match /menuItems/{id} {
+      allow read: if isAuthenticated();
+
+      allow create, update: if isAuthenticated()
+        && request.resource.data.sku is string
+        && request.resource.data.sku.size() > 0
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.categoryId is number
+        && request.resource.data.price is number
+        && request.resource.data.price >= 0
+        && request.resource.data.isActive is bool;
+
+      allow delete: if false;
+    }
+
+    // 5. Counters Collection
+    // Only menuItemId counter document may be read/written with monotonic positive integer values
+    match /counters/{name} {
+      allow read: if isAuthenticated() && name == 'menuItemId';
+
+      allow create: if isAuthenticated()
+        && name == 'menuItemId'
+        && request.resource.data.value is int
+        && request.resource.data.value > 0;
+
+      allow update: if isAuthenticated()
+        && name == 'menuItemId'
+        && request.resource.data.value is int
+        && request.resource.data.value > resource.data.value;
+
+      allow delete: if false;
+    }
+
+    // 6. Orders Collection
+    // Read-only for authenticated users (contains cashier names and discount metadata)
+    match /orders/{id} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // Default deny all other paths
     match /{document=**} {
       allow read, write: if false;

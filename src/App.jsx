@@ -1,6 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-import InventoryPage from "./pages/InventoryPage";
+import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 
@@ -13,7 +13,7 @@ function App() {
           path="/*"
           element={
             <ProtectedRoute>
-              <InventoryPage />
+              <DashboardPage />
             </ProtectedRoute>
           }
         />
