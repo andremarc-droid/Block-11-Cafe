@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { MATERIAL_CATEGORIES, MATERIAL_TYPES, UNITS_BY_TYPE } from "../../lib/constants";
 import { createMaterial, saveMaterialEdit } from "../../lib/firestore/rawMaterials";
-import { formatPcsEquivalent, supportsPackSize } from "../../lib/services/unitConversion";
+import { baseQtyToPcs, supportsPackSize } from "../../lib/services/unitConversion";
 
 const EMPTY_FORM = {
   name: "",
@@ -46,9 +46,16 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
   const showPackSize = supportsPackSize(form.materialType, form.unit);
   const previewPackSize = Number(form.packSize.replace(/,/g, ""));
   const previewStock = Number(form.stockQty.replace(/,/g, ""));
-  const stockInPcs =
-    showPackSize && previewPackSize > 0 && Number.isFinite(previewStock)
-      ? formatPcsEquivalent({ packSize: previewPackSize }, previewStock)
+
+  // Pack size is optional and only valid when it is a positive number.
+  const hasPackSize = showPackSize && previewPackSize > 0;
+
+  // Stock is always typed and saved in the base unit (e.g. g). This hint shows it back as pieces so a mix-up is easy to spot.
+  // "1 pc" is singular; anything else (10 pcs, 0.04 pcs) is plural.
+  const pcCount = hasPackSize && Number.isFinite(previewStock) ? baseQtyToPcs({ packSize: previewPackSize }, previewStock) : null;
+  const stockSummary =
+    pcCount !== null
+      ? `${Math.round(previewStock * 10000) / 10000} ${form.unit} ≈ ${pcCount} ${pcCount === 1 ? "pc" : "pcs"}`
       : "";
 
   function updateField(field, value) {
@@ -85,7 +92,18 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
       }
     }
 
-    const fields = { name, category: form.category, materialType: form.materialType, unit: form.unit, stockQty, costPerUnit, minStockAlert, packSize };
+    // Everything is saved in the material's base unit (the POS depends on it).
+    const round4 = (v) => Math.round(v * 10000) / 10000;
+    const fields = {
+      name,
+      category: form.category,
+      materialType: form.materialType,
+      unit: form.unit,
+      stockQty: round4(stockQty),
+      costPerUnit: round4(costPerUnit),
+      minStockAlert: round4(minStockAlert),
+      packSize,
+    };
 
     setSaving(true);
     try {
@@ -204,7 +222,7 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
                   Pack size <span className="font-normal">(optional)</span>
                 </label>
                 <div className="mt-1.5 flex items-center gap-2 text-base text-ink">
-                  <span>1 pcs =</span>
+                  <span>1 pc =</span>
                   <input
                     id="packSize"
                     inputMode="decimal"
@@ -215,9 +233,10 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
                   />
                   <span>{form.unit}</span>
                 </div>
-                <p className="mt-1 text-xs text-ink-soft">
-                  For stock that comes in pieces, like a 226 g container. Stock stays tracked in {form.unit}; this just lets you
-                  restock and build recipes in pcs.{stockInPcs && <> Current stock {stockInPcs}.</>}
+
+                <p className="mt-2 text-xs text-ink-soft">
+                  For stock that comes in pieces, like a 226 g container. Stock is always saved in {form.unit}.
+                  {stockSummary && <> Current stock: <strong>{stockSummary}</strong>.</>}
                 </p>
               </div>
             )}
