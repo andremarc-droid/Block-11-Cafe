@@ -263,7 +263,7 @@ export function MaterialPickerModal({
                     </p>
                     {getPackSize(selectedMaterial) > 0 && (
                       <p className="text-xs text-ink-soft">
-                        1 pcs = {getPackSize(selectedMaterial)} {selectedMaterial.unit}
+                        1 pc = {getPackSize(selectedMaterial)} {selectedMaterial.packUnit || selectedMaterial.unit}
                       </p>
                     )}
                   </div>

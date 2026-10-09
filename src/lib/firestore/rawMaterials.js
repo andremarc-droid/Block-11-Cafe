@@ -54,8 +54,10 @@ export async function createMaterial(fields, userId) {
     stockQty: fields.stockQty,
     costPerUnit: fields.costPerUnit,
     minStockAlert: fields.minStockAlert,
-    // How many base units 1 pcs holds (e.g. 226 for a 226 g container), or null. Optional; the POS ignores it.
+    // Optional: what 1 pc holds (packSize in packUnit, e.g. 226 + "g"). Informational for pcs materials; the POS ignores it.
+    // Older materials counted in g/kg/ml/liter have a packSize in their own unit and no packUnit.
     packSize: fields.packSize ?? null,
+    packUnit: fields.packUnit ?? null,
     createdBy: userId,
     createdAt: serverTimestamp(),
     [SYNC_TAG_FIELD]: SYNC_TAG_VALUE,
@@ -74,6 +76,7 @@ export async function saveMaterialEdit(materialId, fields) {
     costPerUnit: fields.costPerUnit,
     minStockAlert: fields.minStockAlert,
     packSize: fields.packSize ?? null,
+    packUnit: fields.packUnit ?? null,
     [SYNC_TAG_FIELD]: SYNC_TAG_VALUE,
     updatedAt: serverTimestamp(),
   });

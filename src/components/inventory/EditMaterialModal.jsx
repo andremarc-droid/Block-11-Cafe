@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { MATERIAL_CATEGORIES, MATERIAL_TYPES, UNITS_BY_TYPE } from "../../lib/constants";
 import { createMaterial, saveMaterialEdit } from "../../lib/firestore/rawMaterials";
-import { baseQtyToPcs, supportsPackSize } from "../../lib/services/unitConversion";
+
+// Units a piece's contents can be described in ("1 pc = 226 g"). Label only; stock itself is counted in pcs.
+const PACK_UNITS = ["g", "kg", "ml", "liter"];
 
 const EMPTY_FORM = {
   name: "",
@@ -12,6 +14,7 @@ const EMPTY_FORM = {
   costPerUnit: "",
   minStockAlert: "",
   packSize: "",
+  packUnit: "g",
 };
 
 export function EditMaterialModal({ open, mode, material, userId, onClose, onDone }) {
@@ -31,6 +34,8 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
         costPerUnit: String(material.costPerUnit ?? 0),
         minStockAlert: String(material.minStockAlert ?? 0),
         packSize: material.packSize ? String(material.packSize) : "",
+        // Older materials had a pack size in their own unit (g/kg/ml/liter) and no packUnit; pcs materials default to g.
+        packUnit: material.packUnit ?? (material.packSize && material.unit && material.unit !== "pcs" ? material.unit : "g"),
       });
     } else {
       setForm(EMPTY_FORM);
@@ -42,21 +47,9 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
 
   const availableUnits = UNITS_BY_TYPE[form.materialType] ?? UNITS_BY_TYPE.General;
 
-  // Pack size only applies to materials counted in g/kg/ml/liter (not Packaging / pcs).
-  const showPackSize = supportsPackSize(form.materialType, form.unit);
-  const previewPackSize = Number(form.packSize.replace(/,/g, ""));
-  const previewStock = Number(form.stockQty.replace(/,/g, ""));
-
-  // Pack size is optional and only valid when it is a positive number.
-  const hasPackSize = showPackSize && previewPackSize > 0;
-
-  // Stock is always typed and saved in the base unit (e.g. g). This hint shows it back as pieces so a mix-up is easy to spot.
-  // "1 pc" is singular; anything else (10 pcs, 0.04 pcs) is plural.
-  const pcCount = hasPackSize && Number.isFinite(previewStock) ? baseQtyToPcs({ packSize: previewPackSize }, previewStock) : null;
-  const stockSummary =
-    pcCount !== null
-      ? `${Math.round(previewStock * 10000) / 10000} ${form.unit} ≈ ${pcCount} ${pcCount === 1 ? "pc" : "pcs"}`
-      : "";
+  // Pack size (what one piece holds, e.g. 1 pc = 226 g) is optional and only shown when the unit is pcs.
+  // Packaging (cups, boxes) is counted in plain pieces, so it never gets one.
+  const showPackSize = form.unit === "pcs" && form.materialType !== "Packaging";
 
   function updateField(field, value) {
     setForm((prev) => {
@@ -82,14 +75,24 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
     if (!Number.isFinite(costPerUnit) || costPerUnit < 0) { setError("Cost per unit must be 0 or more."); return; }
     if (!Number.isFinite(minStockAlert) || minStockAlert < 0) { setError("Min stock alert must be 0 or more."); return; }
 
-    // Optional: how many <unit> one piece holds. Blank = no pack size. Never saved for pcs / Packaging materials.
+    // Optional: how much one piece holds (e.g. 226 g). Only for materials counted in pcs. Blank = none.
     let packSize = null;
-    if (showPackSize && form.packSize.trim() !== "") {
-      packSize = Number(form.packSize.replace(/,/g, ""));
-      if (!Number.isFinite(packSize) || packSize <= 0) {
-        setError(`Pack size must be greater than 0 (how many ${form.unit} one piece holds), or leave it blank.`);
-        return;
+    let packUnit = null;
+    if (showPackSize) {
+      if (form.packSize.trim() !== "") {
+        packSize = Number(form.packSize.replace(/,/g, ""));
+        if (!Number.isFinite(packSize) || packSize <= 0) {
+          setError(`Pack size must be greater than 0 (how many ${form.packUnit} one piece holds), or leave it blank.`);
+          return;
+        }
+        packUnit = form.packUnit;
       }
+    } else if (
+      mode === "edit" && material && material.unit !== "pcs" && material.unit === form.unit &&
+      Number(material.packSize) > 0 && !material.packUnit
+    ) {
+      // Older material counted in g/kg/ml/liter with a pack size: keep it untouched so Restock's "pcs" option keeps working.
+      packSize = Number(material.packSize);
     }
 
     // Everything is saved in the material's base unit (the POS depends on it).
@@ -103,6 +106,7 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
       costPerUnit: round4(costPerUnit),
       minStockAlert: round4(minStockAlert),
       packSize,
+      packUnit,
     };
 
     setSaving(true);
@@ -231,12 +235,19 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
                     onChange={(e) => updateField("packSize", e.target.value)}
                     className="w-28 rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none placeholder:text-ink-soft/50 focus:border-accent focus:ring-2 focus:ring-accent/25"
                   />
-                  <span>{form.unit}</span>
+                  <select
+                    id="packUnit"
+                    aria-label="Pack size unit"
+                    value={form.packUnit}
+                    onChange={(e) => updateField("packUnit", e.target.value)}
+                    className="rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+                  >
+                    {PACK_UNITS.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+                  </select>
                 </div>
 
                 <p className="mt-2 text-xs text-ink-soft">
-                  For stock that comes in pieces, like a 226 g container. Stock is always saved in {form.unit}.
-                  {stockSummary && <> Current stock: <strong>{stockSummary}</strong>.</>}
+                  How much one piece holds, like a container of 226 g. Stock, cost and alert above are counted in pcs.
                 </p>
               </div>
             )}
