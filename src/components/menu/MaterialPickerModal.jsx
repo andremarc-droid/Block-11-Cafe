@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { getAllowedUnits, convertToBaseUnit } from "../../lib/services/unitConversion";
+import { getAllowedUnits, convertToBaseUnit, getPackSize } from "../../lib/services/unitConversion";
 import { formatCurrency } from "../../lib/constants";
 
 export function MaterialPickerModal({
@@ -126,7 +126,8 @@ export function MaterialPickerModal({
     }
 
     // Convert entered quantity to the material's base unit
-    const storedQty = convertToBaseUnit(qty, selectedUnit, selectedMaterial.unit);
+    // (passing the material lets "pcs" convert through its pack size, e.g. 0.5 pcs of a 226 g pack = 113 g)
+    const storedQty = convertToBaseUnit(qty, selectedUnit, selectedMaterial.unit, selectedMaterial);
 
     onSelect({
       rawMaterialId: Number(selectedMaterial.id),
@@ -260,6 +261,11 @@ export function MaterialPickerModal({
                     <p className="text-xs text-ink-soft">
                       {selectedMaterial.category} • Cost: {formatCurrency(selectedMaterial.costPerUnit || 0)} per {selectedMaterial.unit}
                     </p>
+                    {getPackSize(selectedMaterial) > 0 && (
+                      <p className="text-xs text-ink-soft">
+                        1 pcs = {getPackSize(selectedMaterial)} {selectedMaterial.unit}
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={() => setSelectedMaterial(null)}

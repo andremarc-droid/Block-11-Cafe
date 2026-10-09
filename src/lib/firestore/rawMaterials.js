@@ -54,6 +54,8 @@ export async function createMaterial(fields, userId) {
     stockQty: fields.stockQty,
     costPerUnit: fields.costPerUnit,
     minStockAlert: fields.minStockAlert,
+    // How many base units 1 pcs holds (e.g. 226 for a 226 g container), or null. Optional; the POS ignores it.
+    packSize: fields.packSize ?? null,
     createdBy: userId,
     createdAt: serverTimestamp(),
     [SYNC_TAG_FIELD]: SYNC_TAG_VALUE,
@@ -71,6 +73,7 @@ export async function saveMaterialEdit(materialId, fields) {
     stockQty: fields.stockQty,
     costPerUnit: fields.costPerUnit,
     minStockAlert: fields.minStockAlert,
+    packSize: fields.packSize ?? null,
     [SYNC_TAG_FIELD]: SYNC_TAG_VALUE,
     updatedAt: serverTimestamp(),
   });

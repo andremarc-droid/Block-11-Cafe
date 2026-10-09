@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { MATERIAL_CATEGORIES, MATERIAL_TYPES, UNITS_BY_TYPE } from "../../lib/constants";
 import { createMaterial, saveMaterialEdit } from "../../lib/firestore/rawMaterials";
+import { formatPcsEquivalent, supportsPackSize } from "../../lib/services/unitConversion";
 
 const EMPTY_FORM = {
   name: "",
@@ -10,6 +11,7 @@ const EMPTY_FORM = {
   stockQty: "",
   costPerUnit: "",
   minStockAlert: "",
+  packSize: "",
 };
 
 export function EditMaterialModal({ open, mode, material, userId, onClose, onDone }) {
@@ -28,6 +30,7 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
         stockQty: String(material.stockQty ?? 0),
         costPerUnit: String(material.costPerUnit ?? 0),
         minStockAlert: String(material.minStockAlert ?? 0),
+        packSize: material.packSize ? String(material.packSize) : "",
       });
     } else {
       setForm(EMPTY_FORM);
@@ -38,6 +41,15 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
   if (!open) return null;
 
   const availableUnits = UNITS_BY_TYPE[form.materialType] ?? UNITS_BY_TYPE.General;
+
+  // Pack size only applies to materials counted in g/kg/ml/liter (not Packaging / pcs).
+  const showPackSize = supportsPackSize(form.materialType, form.unit);
+  const previewPackSize = Number(form.packSize.replace(/,/g, ""));
+  const previewStock = Number(form.stockQty.replace(/,/g, ""));
+  const stockInPcs =
+    showPackSize && previewPackSize > 0 && Number.isFinite(previewStock)
+      ? formatPcsEquivalent({ packSize: previewPackSize }, previewStock)
+      : "";
 
   function updateField(field, value) {
     setForm((prev) => {
@@ -63,7 +75,17 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
     if (!Number.isFinite(costPerUnit) || costPerUnit < 0) { setError("Cost per unit must be 0 or more."); return; }
     if (!Number.isFinite(minStockAlert) || minStockAlert < 0) { setError("Min stock alert must be 0 or more."); return; }
 
-    const fields = { name, category: form.category, materialType: form.materialType, unit: form.unit, stockQty, costPerUnit, minStockAlert };
+    // Optional: how many <unit> one piece holds. Blank = no pack size. Never saved for pcs / Packaging materials.
+    let packSize = null;
+    if (showPackSize && form.packSize.trim() !== "") {
+      packSize = Number(form.packSize.replace(/,/g, ""));
+      if (!Number.isFinite(packSize) || packSize <= 0) {
+        setError(`Pack size must be greater than 0 (how many ${form.unit} one piece holds), or leave it blank.`);
+        return;
+      }
+    }
+
+    const fields = { name, category: form.category, materialType: form.materialType, unit: form.unit, stockQty, costPerUnit, minStockAlert, packSize };
 
     setSaving(true);
     try {
@@ -175,6 +197,30 @@ export function EditMaterialModal({ open, mode, material, userId, onClose, onDon
                 />
               </div>
             </div>
+
+            {showPackSize && (
+              <div>
+                <label className="block text-sm font-medium text-ink-soft" htmlFor="packSize">
+                  Pack size <span className="font-normal">(optional)</span>
+                </label>
+                <div className="mt-1.5 flex items-center gap-2 text-base text-ink">
+                  <span>1 pcs =</span>
+                  <input
+                    id="packSize"
+                    inputMode="decimal"
+                    placeholder="e.g. 226"
+                    value={form.packSize}
+                    onChange={(e) => updateField("packSize", e.target.value)}
+                    className="w-28 rounded-lg border border-line bg-paper px-3 py-2 text-base text-ink outline-none placeholder:text-ink-soft/50 focus:border-accent focus:ring-2 focus:ring-accent/25"
+                  />
+                  <span>{form.unit}</span>
+                </div>
+                <p className="mt-1 text-xs text-ink-soft">
+                  For stock that comes in pieces, like a 226 g container. Stock stays tracked in {form.unit}; this just lets you
+                  restock and build recipes in pcs.{stockInPcs && <> Current stock {stockInPcs}.</>}
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-ink-soft" htmlFor="minStockAlert">Min stock alert threshold</label>

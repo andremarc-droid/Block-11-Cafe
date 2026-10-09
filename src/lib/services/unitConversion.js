@@ -1,15 +1,32 @@
 /**
- * Returns allowed units for a raw material based on its materialType and unit family.
- * - Solid: ["g", "kg"]
- * - Liquid: ["ml", "liter"]
- * - Packaging: ["pcs"]
- * - General or unknown: derive unit family from material's own unit:
- *   g or kg -> ["g", "kg"]
- *   ml or liter -> ["ml", "liter"]
- *   pcs -> ["pcs"]
- *   anything else -> [that unit]
+ * PACK SIZE ("pcs" for solids and liquids)
+ * ----------------------------------------
+ * A raw material is always stocked, costed and deducted by recipes in its BASE unit (g, kg, ml or
+ * liter). The POS relies on that, so it never changes. A material may optionally carry a `packSize`:
+ * how many BASE units one piece contains (e.g. a 226 g container of powder with base unit "g" has
+ * packSize 226, i.e. 1 pcs = 226 g). When a pack size is set, "pcs" becomes an extra unit the admin can
+ * ENTER quantities in (restock, recipes); it is converted to the base unit immediately, so nothing
+ * downstream ever sees pcs for these materials.
  */
-export function getAllowedUnits(material) {
+
+/** Pack size in base units, or 0 when the material has none (or it is invalid). */
+export function getPackSize(material) {
+  const size = Number(material?.packSize);
+  return Number.isFinite(size) && size > 0 ? size : 0;
+}
+
+/** True when it makes sense to give this material a pack size: anything not already counted in pcs. */
+export function supportsPackSize(materialType, unit) {
+  const u = (unit || "").trim().toLowerCase();
+  return materialType !== "Packaging" && u !== "pcs" && u !== "";
+}
+
+/** Rounds away binary floating-point noise (0.1 * 3 -> 0.30000000000000004) without losing real precision. */
+function tidy(value) {
+  return Math.round(value * 10000) / 10000;
+}
+
+function getBaseAllowedUnits(material) {
   if (!material) return ["pcs"];
   const type = material.materialType;
   if (type === "Solid") return ["g", "kg"];
@@ -25,10 +42,25 @@ export function getAllowedUnits(material) {
 }
 
 /**
- * Converts an entered quantity in enteredUnit to the material's baseUnit.
- * Handles solid (g <-> kg, factor 1000) and liquid (ml <-> liter, factor 1000).
+ * Returns the units a quantity may be entered in for a raw material.
+ * - Solid: ["g", "kg"]; Liquid: ["ml", "liter"]; Packaging: ["pcs"]
+ * - General or unknown: derived from the material's own unit
+ * - Any of the above, plus "pcs", when the material has a pack size (1 pcs = N base units)
  */
-export function convertToBaseUnit(enteredQty, enteredUnit, baseUnit) {
+export function getAllowedUnits(material) {
+  const units = getBaseAllowedUnits(material);
+  if (getPackSize(material) > 0 && !units.includes("pcs")) {
+    return [...units, "pcs"];
+  }
+  return units;
+}
+
+/**
+ * Converts an entered quantity in enteredUnit to the material's baseUnit.
+ * Handles solid (g <-> kg, factor 1000), liquid (ml <-> liter, factor 1000) and, when `material`
+ * has a pack size, pcs -> base unit (qty x packSize).
+ */
+export function convertToBaseUnit(enteredQty, enteredUnit, baseUnit, material = null) {
   const qty = Number(enteredQty) || 0;
   if (!enteredUnit || !baseUnit || enteredUnit === baseUnit) {
     return qty;
@@ -36,6 +68,12 @@ export function convertToBaseUnit(enteredQty, enteredUnit, baseUnit) {
 
   const eUnit = enteredUnit.toLowerCase().trim();
   const bUnit = baseUnit.toLowerCase().trim();
+
+  // Pieces of a packed material: 1 pcs = packSize base units
+  if (eUnit === "pcs" && bUnit !== "pcs") {
+    const pack = getPackSize(material);
+    return pack > 0 ? tidy(qty * pack) : qty;
+  }
 
   // Solid: g <-> kg
   if (eUnit === "g" && (bUnit === "kg" || bUnit === "kilogram")) {
@@ -54,6 +92,26 @@ export function convertToBaseUnit(enteredQty, enteredUnit, baseUnit) {
   }
 
   return qty;
+}
+
+/**
+ * How many pieces a quantity in the material's base unit is, e.g. 678 (g) of a 226 g pack -> 3.
+ * Returns null when the material has no pack size.
+ */
+export function baseQtyToPcs(material, baseQty) {
+  const pack = getPackSize(material);
+  if (pack <= 0) return null;
+  return tidy((Number(baseQty) || 0) / pack);
+}
+
+/**
+ * "≈ 3 pcs" style text for a base-unit quantity, or "" when the material has no pack size.
+ */
+export function formatPcsEquivalent(material, baseQty) {
+  const pcs = baseQtyToPcs(material, baseQty);
+  if (pcs === null) return "";
+  const text = pcs % 1 === 0 ? pcs.toString() : pcs.toFixed(2).replace(/\.?0+$/, "");
+  return `≈ ${text} pcs`;
 }
 
 /**
